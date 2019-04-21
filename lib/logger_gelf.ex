@@ -24,13 +24,13 @@ defmodule LoggerGelf do
       greylog_hostname: "127.0.0.1",
       greylog_hostport: 12201,
     ```
-    optional config options:
+    optional config:
 
     ```
     hostname: "hostname", #defaults to :inet.gethostname/0 result
     level: :warn, # defaults to lowest level (:debug)
     metadata: [:id, :module, :record], # defaults to :all
-    metadata_formatter: {Module, :function, arity}, # skipping the option will leave metadata as it is
+    metadata_formatter: {Module, :function, arity}, # custom metadata formatter - you can add any function from your module and use it for metadata formatting, skipping the option will leave metadata as it is
     json_encoder: Jason, #defaults to Jason, can be overriden by any module using  encode!/1 (ie. Poison)
     compression: :gzip, # defaults to :gzip, :zlib or :raw are also available
     ```
@@ -57,18 +57,23 @@ defmodule LoggerGelf do
 
   # all events are being passed to backend in below format:
   # {level, group_leader, {Logger, message, timestamp, metadata}} | :flush
+  def handle_event(
+        {level, _group_leader, {Logger, message, timestamp, metadata}},
+        %{level: min_level} = state
+      ) do
+        # TODO: abstract below logic to separate function patternmatch by head and implement formatter
+    if right_log_level?(min_level, level) do
+      # LoggerGelf.LogFormatter.format(level, message, timestamp, metadata)
+      # |> log_event()
+    end
+
+    # ignore messages where logging level is lower than set up
+    {:ok, state}
+  end
 
   # ignore messages where the group leader is in a different node
   def handle_event({_log_level, group_leader, {Logger, _, _, _}}, state)
       when node(group_leader) != node() do
-    {:ok, state}
-  end
-  # ignore messages where logging level is lower than set up
-  def handle_event({level, _gl, {Logger, msg, ts, md}}, %{level: min_level} = state) do
-    if is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt do
-      log_event(level, msg, ts, md, state)
-    end
-
     {:ok, state}
   end
 
@@ -136,6 +141,7 @@ defmodule LoggerGelf do
     hostname = Keyword.get(config, :hostname, hostname)
     {%{map | hostname: hostname}, config}
   end
+
   # set backend's logging level, defaults to debug
   defp set_level({map, config}) do
     level = Keyword.get(config, :level, :debug)
@@ -173,7 +179,13 @@ defmodule LoggerGelf do
     {%{map | compression: compression}, config}
   end
 
-  defp log_event(level, message, timestamp, metadata, state) do
-    # send stuff to Greylog
+  defp log_event(formatted_event) do
+    # do stuff and send things to Greylog
+  end
+
+  defp right_log_level?(nil, _level), do: true
+
+  defp right_log_level?(min_level, level) do
+    Logger.compare_levels(level, min_level) != :lt
   end
 end
