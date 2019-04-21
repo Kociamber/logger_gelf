@@ -38,17 +38,10 @@ defmodule LoggerGelf do
 
     Just add to deps, configure and use Logger as usual.
 
-    In addition to the backend configuration, you might want to check the
-    [Logger configuration](https://hexdocs.pm/logger/Logger.html) for other
-    options that might be important for your particular environment. In
-    particular, modifying the `:utc_log` setting might be necessary
-    depending on your server configuration.
-    This backend supports `metadata: :all`.
+    ## Credits
 
-    ## Notes
-
-    Credit where credit is due, this would not exist without
-    [protofy/erl_graylog_sender](https://github.com/protofy/erl_graylog_sender).
+    Credit where credit is due! This implementation was heavily inspired by:
+    [jschniper/gelf_logger](https://github.com/jschniper/gelf_logger).
   """
   @behaviour :gen_event
   # initialize and configure
