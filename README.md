@@ -1,5 +1,6 @@
 # LoggerGelf [![Build Status](https://travis-ci.org/kociamber/logger_gelf.svg?branch=master)](https://travis-ci.org/kociamber/logger_gelf)
-**WIP!!: Greylog backend for Elixir Logger.**
+**!!Currently WIP!!: Greylog backend for Elixir Logger.**
+
 This application is able to generate Graylog Extended Log Format (GELF) UDP messages (TCP version coming soon)
 
 ## Installation
