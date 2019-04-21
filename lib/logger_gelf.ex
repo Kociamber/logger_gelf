@@ -28,7 +28,7 @@ defmodule LoggerGelf do
 
     ```
     hostname: "hostname", #defaults to :inet.gethostname/0 result
-    level: ":warn", # defaults to lowest level (:debug)
+    level: :warn, # defaults to lowest level (:debug)
     metadata: [:id, :module, :record], # defaults to :all
     metadata_formatter: {Module, :function, arity}, # skipping the option will leave metadata as it is
     json_encoder: Jason, #defaults to Jason, can be overriden by any module using  encode!/1 (ie. Poison)
@@ -173,7 +173,7 @@ defmodule LoggerGelf do
     {%{map | compression: compression}, config}
   end
 
-  defp log_event(level, message, time_stamp, metadata, state) do
-    # log stuff
+  defp log_event(level, message, timestamp, metadata, state) do
+    # send stuff to Greylog
   end
 end

@@ -36,7 +36,7 @@ optional config options:
 
 ```elixir
 hostname: "hostname", #defaults to :inet.gethostname/0 result
-level: ":warn", # defaults to lowest level (:debug)
+level: :warn, # defaults to lowest level (:debug)
 metadata: [:id, :module, :record], # defaults to :all
 metadata_formatter: {Module, :function, arity}, # skipping the option will leave metadata as it is
 json_encoder: Jason, #defaults to Jason, can be overriden by any module using  encode!/1 (ie. Poison)
