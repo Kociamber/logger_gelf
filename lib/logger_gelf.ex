@@ -50,7 +50,7 @@ defmodule LoggerGelf do
     Credit where credit is due, this would not exist without
     [protofy/erl_graylog_sender](https://github.com/protofy/erl_graylog_sender).
   """
-
+  @behaviour :gen_event
   # initialize and configure
   def init({__MODULE__, name}) do
     {:ok, configure(name, [])}
@@ -58,7 +58,16 @@ defmodule LoggerGelf do
 
   # configure
   def handle_call({:configure, options}, state) do
-    {:ok, configure(state[:name], options)}
+    {:ok, :ok, configure(state[:name], options)}
+  end
+
+  # all events are being passed to backend in below format:
+  # {log_level, group_leader, {Logger, message, timestamp, metadata}}
+
+  # ignore messages where the group leader is in a different node
+  def handle_event({_log_level, group_leader, {Logger, _, _, _}}, state)
+      when node(group_leader) != node() do
+    {:ok, state}
   end
 
   # flush state
@@ -68,7 +77,7 @@ defmodule LoggerGelf do
 
   defp configure(name, options) do
     config = set_config(name, options)
-    # below piping will result with building config map
+    # below piping will result in building config map
     config
     # set up mandatory fields
     |> set_application()
@@ -102,8 +111,7 @@ defmodule LoggerGelf do
         {map, config}
 
       greylog_hostname ->
-        map = Map.merge(map, :greylog_hostname, greylog_hostname)
-        {map, config}
+        {%{map | greylog_hostname: greylog_hostname}, config}
     end
   end
 
@@ -114,8 +122,7 @@ defmodule LoggerGelf do
         {map, config}
 
       greylog_hostport ->
-        map = Map.merge(map, :greylog_hostport, greylog_hostport)
-        {map, config}
+        {%{map | greylog_hostport: greylog_hostport}, config}
     end
   end
 
@@ -123,41 +130,37 @@ defmodule LoggerGelf do
   defp set_hostname({map, config}) do
     {:ok, hostname} = :inet.gethostname()
     hostname = Keyword.get(config, :hostname, hostname)
-    map = Map.merge(map, :hostname, hostname)
-    {map, config}
+    {%{map | hostname: hostname}, config}
   end
 
   # set metadata, defaults to :all
   defp set_metadata({map, config}) do
     metadata = Keyword.get(config, :metadata, :all)
-    map = Map.merge(map, :metadata, metadata)
-    {map, config}
+    {%{map | metadata: metadata}, config}
   end
 
   # set formatter for metadata
   defp set_metadata_formatter({map, config}) do
-    with true <- Keyword.has_key?(config, :custom_md_format),
-         {module, function, arity} = Keyword.get(config, :custom_md_format),
+    with true <- Keyword.has_key?(config, :metadata_formatter),
+         {module, function, arity} = Keyword.get(config, :metadata_formatter),
          true <- Code.ensure_compiled?(module),
          true <- function_exported?(module, function, arity) do
-      map = Map.merge(map, :metadata, {module, function, arity})
-      {map, config}
+      {%{map | metadata_formatter: {module, function, arity}}, config}
     else
       _ -> {map, config}
     end
   end
 
   # set json encoder, defaults to Json
+  # TODO: add with statement as above to check whether json encoder exists
   defp set_json_encoder({map, config}) do
     json_encoder = Keyword.get(config, :json_encoder, Jason)
-    map = Map.merge(map, :json_encoder, json_encoder)
-    {map, config}
+    {%{map | json_encoder: json_encoder}, config}
   end
 
   # set compression, defaults ti :gzip
   defp set_compression({map, config}) do
     compression = Keyword.get(config, :compression, :gzip)
-    map = Map.merge(map, :compression, compression)
-    {map, config}
+    {%{map | compression: compression}, config}
   end
 end
