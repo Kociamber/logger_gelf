@@ -28,6 +28,7 @@ defmodule LoggerGelf do
 
     ```
     hostname: "hostname", #defaults to :inet.gethostname/0 result
+    level: ":warn", # defaults to lowest level (:debug)
     metadata: [:id, :module, :record], # defaults to :all
     metadata_formatter: {Module, :function, arity}, # skipping the option will leave metadata as it is
     json_encoder: Jason, #defaults to Jason, can be overriden by any module using  encode!/1 (ie. Poison)
@@ -55,11 +56,19 @@ defmodule LoggerGelf do
   end
 
   # all events are being passed to backend in below format:
-  # {log_level, group_leader, {Logger, message, timestamp, metadata}}
+  # {level, group_leader, {Logger, message, timestamp, metadata}} | :flush
 
   # ignore messages where the group leader is in a different node
   def handle_event({_log_level, group_leader, {Logger, _, _, _}}, state)
       when node(group_leader) != node() do
+    {:ok, state}
+  end
+  # ignore messages where logging level is lower than set up
+  def handle_event({level, _gl, {Logger, msg, ts, md}}, %{level: min_level} = state) do
+    if is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt do
+      log_event(level, msg, ts, md, state)
+    end
+
     {:ok, state}
   end
 
@@ -78,6 +87,8 @@ defmodule LoggerGelf do
     |> set_greylog_hostport
     # optional fields
     |> set_hostname()
+    |> set_level()
+    # |> set_format()
     |> set_metadata()
     |> set_metadata_formatter()
     |> set_json_encoder()
@@ -125,6 +136,11 @@ defmodule LoggerGelf do
     hostname = Keyword.get(config, :hostname, hostname)
     {%{map | hostname: hostname}, config}
   end
+  # set backend's logging level, defaults to debug
+  defp set_level({map, config}) do
+    level = Keyword.get(config, :level, :debug)
+    {%{map | level: level}, config}
+  end
 
   # set metadata, defaults to :all
   defp set_metadata({map, config}) do
@@ -155,5 +171,9 @@ defmodule LoggerGelf do
   defp set_compression({map, config}) do
     compression = Keyword.get(config, :compression, :gzip)
     {%{map | compression: compression}, config}
+  end
+
+  defp log_event(level, message, time_stamp, metadata, state) do
+    # log stuff
   end
 end
