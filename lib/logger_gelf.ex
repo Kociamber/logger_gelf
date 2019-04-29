@@ -30,7 +30,7 @@ defmodule LoggerGelf do
     hostname: "hostname", #defaults to :inet.gethostname/0 result
     level: :warn, # defaults to lowest level (:debug)
     metadata: [:id, :module, :record], # defaults to :all
-    metadata_formatter: {Module, :function, arity}, # custom metadata formatter - you can add any function from your module and use it for metadata formatting, skipping the option will leave metadata as it is
+    formatter: {Module, :function, arity}, # custom metadata formatter - you can add any function from your module and use it for metadata formatting, skipping the option will leave metadata as it is
     json_encoder: Jason, #defaults to Jason, can be overriden by any module using  encode!/1 (ie. Poison)
     compression: :gzip, # defaults to :gzip, :zlib or :raw are also available
     ```
@@ -61,8 +61,9 @@ defmodule LoggerGelf do
         {level, _group_leader, {Logger, message, timestamp, metadata}},
         %{level: min_level} = state
       ) do
-        # TODO: abstract below logic to separate function patternmatch by head and implement formatter
+    # TODO: abstract below logic to separate function patternmatch by head and implement formatter
     if right_log_level?(min_level, level) do
+      IO.inspect(message, label: "loggin' babe!")
       # LoggerGelf.LogFormatter.format(level, message, timestamp, metadata)
       # |> log_event()
     end
@@ -84,6 +85,9 @@ defmodule LoggerGelf do
 
   defp configure(name, options) do
     config = set_config(name, options)
+    # dynamic re-configuration of logger's config with new options
+    # not sure whether it's really needed
+    :ok = Application.put_env(:logger, name, config)
     # below piping will result in building config map
     config
     # set up mandatory fields
@@ -95,12 +99,12 @@ defmodule LoggerGelf do
     |> set_level()
     # |> set_format()
     |> set_metadata()
-    |> set_metadata_formatter()
+    |> set_formatter()
     |> set_json_encoder()
     |> set_compression()
   end
 
-  # fetch config from dependant application and merge with options
+  # fetch entire config from dependant application and merge with options
   defp set_config(name, options) do
     :logger
     |> Application.get_env(name, [])
@@ -155,12 +159,12 @@ defmodule LoggerGelf do
   end
 
   # set formatter for metadata
-  defp set_metadata_formatter({map, config}) do
-    with true <- Keyword.has_key?(config, :metadata_formatter),
-         {module, function, arity} = Keyword.get(config, :metadata_formatter),
+  defp set_formatter({map, config}) do
+    with true <- Keyword.has_key?(config, :formatter),
+         {module, function, arity} = Keyword.get(config, :formatter),
          true <- Code.ensure_compiled?(module),
          true <- function_exported?(module, function, arity) do
-      {%{map | metadata_formatter: {module, function, arity}}, config}
+      {%{map | formatter: {module, function, arity}}, config}
     else
       _ -> {map, config}
     end
